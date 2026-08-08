@@ -1,0 +1,29 @@
+# Python virtual environment
+.venv/
+.venv-*/
+
+# VS Code settings
+.vscode/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Blender temporary files
+*.blend1
+*.blend2
+*.blend@
+
+# Ignore ZIP files generally
+*.zip
+*.rar
+
+# But include the public release
+!Releases/
+!Releases/pcb_studioV9.zip
+
+# OS files
+Thumbs.db
+.DS_Store

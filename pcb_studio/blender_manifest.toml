@@ -1,0 +1,18 @@
+schema_version = "1.0.0"
+
+id = "pcb_studio"
+version = "0.7.0"
+name = "PCB Studio"
+tagline = "PCB rendering tools for Altium Designer exports"
+maintainer = "Shihabul Ehsan <shihabulehsan@gmail.com>"
+
+type = "add-on"
+
+blender_version_min = "4.5.0"
+
+license = [
+    "SPDX:GPL-3.0-or-later",
+]
+
+[permissions]
+files = "Import OBJ and linked MTL files from disk"
