@@ -4,6 +4,12 @@ PCB Studio is a Blender extension for importing, preparing, rendering, and anima
 
 The project is aimed at PCB designers, engineers, makers, and developers who want good-looking PCB renders without learning Blender in depth.
 
+## Turntable Demo Video
+
+See a sample PCB Studio turntable animation:
+
+**[▶ Watch the PCB Turntable Demo](docs/videos/pcb_turntable.mp4)**
+
 > Current tested environment: **Blender 4.5.11 LTS on Windows**
 
 ![PCB Studio overview](docs/images/09-final-render.png)
