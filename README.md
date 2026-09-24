@@ -54,7 +54,7 @@ See a sample PCB Studio turntable animation:
 
 The current tested build is:
 
-[Download PCB Studio v2.3.2](Releases/pcb_studio-2.3.2.zip).
+[Download PCB Studio V1.3.5](Releases/pcb_studioV1.3.5.zip).
 
 To rebuild from source, run Blender's extension builder from this repository:
 
@@ -225,7 +225,7 @@ Open the menu in the upper-right corner and choose:
 
 Select:
 
-`pcb_studio-2.3.2.zip`
+`pcb_studioV1.3.5.zip`
 
 Enable **PCB Studio** if Blender asks you to enable it.
 
