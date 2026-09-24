@@ -7,6 +7,8 @@ from mathutils import Vector
 
 from ..constants import (
     FILL_LIGHT_NAME,
+    FRONT_LIGHT_LEFT_NAME,
+    FRONT_LIGHT_RIGHT_NAME,
     KEY_LIGHT_NAME,
     RIM_LIGHT_NAME,
     RENDER_SETUP_COLLECTION,
@@ -102,4 +104,20 @@ def setup_lights(bounds: BoundingBox) -> str:
     rim.location = center + Vector((0.0, light_distance, light_distance * 0.7))
     _aim_light_at(rim, center)
 
-    return "Three-point lighting rig created."
+    # --- Front fill lights: left and right, soft front illumination for black components ---
+    front_fill_size = light_size * 0.75
+    front_distance = max_dim * 1.8
+
+    front_left = _get_or_create_area_light(FRONT_LIGHT_LEFT_NAME, setup_coll)
+    front_left.data.energy = 250.0 * max_dim
+    front_left.data.size = front_fill_size
+    front_left.location = center + Vector((-light_distance * 0.5, -front_distance, light_distance * 0.4))
+    _aim_light_at(front_left, center)
+
+    front_right = _get_or_create_area_light(FRONT_LIGHT_RIGHT_NAME, setup_coll)
+    front_right.data.energy = 250.0 * max_dim
+    front_right.data.size = front_fill_size
+    front_right.location = center + Vector((light_distance * 0.5, -front_distance, light_distance * 0.4))
+    _aim_light_at(front_right, center)
+
+    return "Three-point lighting rig with front fill lights created."

@@ -10,15 +10,15 @@ from ..constants import (
     OPERATOR_ID_RESET_TURNTABLE,
     PROP_SCENE_ATTR,
 )
-from ..utils.animation import reset_turntable
+from ..utils.animation import reset_animation
 
 
 class PCBSTUDIO_OT_reset_turntable(bpy.types.Operator):
-    """Remove turntable keyframes and restore the PCB orientation."""
+    """Remove managed animation and restore the PCB and camera."""
 
     bl_idname: str = OPERATOR_ID_RESET_TURNTABLE
-    bl_label: str = "Reset Turntable"
-    bl_description: str = "Remove turntable keyframes and restore PCB orientation"
+    bl_label: str = "Reset Animation"
+    bl_description: str = "Remove managed keyframes and restore PCB and camera"
     bl_options: set[str] = {"REGISTER", "UNDO"}
 
     def execute(self, context: bpy.types.Context | None) -> set[str]:
@@ -35,7 +35,12 @@ class PCBSTUDIO_OT_reset_turntable(bpy.types.Operator):
             self.report({"ERROR"}, "Extension state not available.")
             return {"CANCELLED"}
 
-        result = reset_turntable()
+        if context.screen is not None and context.screen.is_animation_playing:
+            try:
+                bpy.ops.screen.animation_cancel(restore_frame=False)
+            except RuntimeError:
+                pass
+        result = reset_animation()
         props.turntable_status = result
         props.turntable_enabled = False
         self.report({"INFO"}, result)

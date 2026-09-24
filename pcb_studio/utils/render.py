@@ -26,6 +26,34 @@ def _get_eevee_engine() -> str:
     return "BLENDER_EEVEE_NEXT"
 
 
+def configure_eevee_shadows(scene: bpy.types.Scene) -> None:
+    """Give EEVEE Next enough samples to actually resolve a soft shadow.
+
+    The product shadow was invisible in the viewport while rendering correctly in
+    Cycles.  Nothing here had ever set the viewport sample count, and the shadow
+    quality was pinned at its floor (1 ray, 8 steps), so the wide penumbra of a
+    studio area light resolved to nothing on screen.  Cycles path-traces the same
+    light at hundreds of samples and was unaffected.
+
+    Scene-level and idempotent, and inert while Cycles is the active engine.
+    Every attribute is EEVEE-Next-only, so each is probed individually to keep
+    Blender 4.5 and 5.2 both working.
+    """
+    eevee = getattr(scene, "eevee", None)
+    if eevee is None:
+        return
+    for name, value in (
+        ("use_shadows", True),
+        ("shadow_ray_count", 4),
+        ("shadow_step_count", 16),
+        # The viewport accumulator; without it jittered soft shadows never
+        # converge on screen, which is what the user was actually seeing.
+        ("taa_samples", 32),
+    ):
+        if hasattr(eevee, name):
+            setattr(eevee, name, value)
+
+
 def configure_render_settings() -> str:
     """Apply EEVEE preview render settings.
 
@@ -54,11 +82,9 @@ def configure_render_settings() -> str:
     scene.render.image_settings.color_mode = "RGB"
 
     # EEVEE quality settings (conservative, preview-oriented).
-    eevee = scene.eevee
-    eevee.taa_render_samples = 64
-    eevee.use_shadows = True
-    eevee.shadow_ray_count = 1
-    eevee.shadow_step_count = 8
+    if hasattr(scene.eevee, "taa_render_samples"):
+        scene.eevee.taa_render_samples = 64
+    configure_eevee_shadows(scene)
 
     # Color management — use existing valid setting when available.
     valid_transforms = {"Standard", "Filmic", "AgX", "False Color", "Raw"}
@@ -102,10 +128,12 @@ def setup_world_background() -> str:
 
 
 def setup_background_plane(bounds: BoundingBox) -> str:
-    """Create or update a background plane below the PCB.
+    """Create and place the managed backdrop object and its wall material.
 
-    The plane is sized to fill the camera view and positioned with a
-    small gap below the lowest point of the PCB.
+    ``PCB_BACKGROUND`` retains its original name for saved-file compatibility.
+    This function owns the object, its collection, its position and the default
+    wall material; the mesh is built by ``studio._update_backdrop_geometry``,
+    which is always called immediately afterwards.
 
     Args:
         bounds: The combined PCB bounding box.
@@ -113,6 +141,11 @@ def setup_background_plane(bounds: BoundingBox) -> str:
     Returns:
         A status message.
     """
+    from . import studio_environment
+    scene = bpy.context.scene
+    if studio_environment.enabled(scene):
+        return studio_environment.update(scene, scene.pcb_studio_import)
+
     from .camera import get_or_create_render_setup_collection
 
     setup_coll = get_or_create_render_setup_collection()
@@ -132,29 +165,19 @@ def setup_background_plane(bounds: BoundingBox) -> str:
             principled.inputs["Roughness"].default_value = 0.7
             principled.inputs["Metallic"].default_value = 0.0
 
-    # --- Plane ---
+    # --- Managed cyclorama object ---
     plane = bpy.data.objects.get(BACKGROUND_NAME)
     if plane is None:
         mesh = bpy.data.meshes.new(BACKGROUND_NAME)
         plane = bpy.data.objects.new(BACKGROUND_NAME, mesh)
         setup_coll.objects.link(plane)
 
-    # Size: cover at least 3x the max dimension for safety.
-    plane_size = max_dim * 3.0
-    gap = max_dim * 0.01  # 1% gap below lowest point.
+    gap = max_dim * 0.012
 
-    # Update mesh (simple quad).
-    mesh = plane.data
-    mesh.clear_geometry()
-    half = plane_size / 2.0
-    verts = [
-        Vector((-half, -half, 0.0)),
-        Vector((half, -half, 0.0)),
-        Vector((-half, half, 0.0)),
-        Vector((half, half, 0.0)),
-    ]
-    mesh.from_pydata(verts, [], [(0, 1, 3, 2)])
-    mesh.update()
+    # The mesh itself belongs to studio._update_backdrop_geometry, which runs
+    # immediately after this and rebuilds it from the panel's shape, width,
+    # depth, wall and curve-radius properties.  Building a second, differently
+    # proportioned profile here would only be thrown away.
 
     # Position below PCB with gap.
     plane.location = Vector((
@@ -162,6 +185,7 @@ def setup_background_plane(bounds: BoundingBox) -> str:
         bounds.center.y,
         bounds.min.z - gap,
     ))
+    plane["pcbstudio_managed"] = True
 
     # Assign material.
     if plane.data.materials:
@@ -169,4 +193,4 @@ def setup_background_plane(bounds: BoundingBox) -> str:
     else:
         plane.data.materials.append(mat)
 
-    return "Background plane created."
+    return "Infinity cyclorama created."

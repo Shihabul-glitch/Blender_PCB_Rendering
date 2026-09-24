@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "pcb_studio"
-version = "0.7.0"
+version = "2.3.2"
 name = "PCB Studio"
 tagline = "PCB rendering tools for Altium Designer exports"
 maintainer = "Shihabul Ehsan <shihabulehsan@gmail.com>"
@@ -15,4 +15,7 @@ license = [
 ]
 
 [permissions]
-files = "Import OBJ and linked MTL files from disk"
+files = "Import OBJ, MTL, HDRI, and PCB texture files"
+
+[build]
+paths_exclude_pattern = ["__pycache__/", "*.pyc", "*.bak", ".git/"]

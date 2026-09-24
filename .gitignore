@@ -23,7 +23,17 @@ __pycache__/
 # But include the public release
 !Releases/
 !Releases/pcb_studioV9.zip
+!Releases/pcb_studioV11.zip
+!Releases/pcb_studio-1.0.0.zip
+!Releases/pcb_studio-1.1.0.zip
+!Releases/pcb_studio-1.2.0.zip
+!Releases/pcb_studio-2.3.2.zip
+tests/*.log
 
 # OS files
 Thumbs.db
 .DS_Store
+
+# Backups and local reference material
+*.bak
+blender_rendering_subtitle.txt

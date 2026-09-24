@@ -2,6 +2,8 @@
 
 PCB Studio is a Blender extension for importing, preparing, rendering, and animating PCB models with a simple workflow.
 
+Current release: **PCB Studio v2.3.2 — Final Development / Stabilization Pass**.
+
 The project is aimed at PCB designers, engineers, makers, and developers who want good-looking PCB renders without learning Blender in depth.
 
 ## Turntable Demo Video
@@ -10,7 +12,7 @@ See a sample PCB Studio turntable animation:
 
 **[▶ Watch the PCB Turntable Demo](docs/videos/pcb_turntable.mp4)**
 
-> Current tested environment: **Blender 4.5.11 LTS on Windows**
+> Tested environments: **Blender 4.5.11 LTS (primary)** and **Blender 5.2.1 LTS (secondary)** on Windows
 
 ![PCB Studio overview](docs/images/09-final-render.png)
 
@@ -19,19 +21,30 @@ See a sample PCB Studio turntable animation:
 - Import PCB models from **OBJ**
 - Automatically detect and use the linked **MTL** material file
 - Automatic PCB scene preparation
-- Automatic camera creation and framing
+- Automatic 75 mm Top camera creation and bounds-aware framing
 - Manual PCB material assignment
 - PCB-oriented material presets
 - Studio lighting presets
-- HDRI environment lighting with rotation and brightness controls
-- Background presets
-- Camera presets including Top, Isometric, 45 Degree, Bottom, Close-up, and Macro
-- Zoom-to-fit camera control
+- Five-light, scale-aware professional product rig with independent controls
+- Two light-linked background accent lights and dual-color glow
+- HDRI Visible, Lighting Only, and Lighting + Background modes
+- Procedural solid, linear, radial, two-tone, and studio-gradient backgrounds
+- Smooth infinity-wall cyclorama, satin/glossy/mirror/dark-glass floors, and optional pedestal
+- Optional component smoothing and idempotent scale-aware micro bevels
+- Shared PCB UV alignment, partial front/back PCB layer textures, trace relief, and physical silkscreen response
+- EEVEE lighting previews and adaptive, denoised Cycles professional stills
+- Transactional Cycles AUTO/CPU/GPU selection with backend detection and CPU fallback
+- Auto Target and Manual still-camera modes with safe managed-constraint switching
+- Scale-aware camera movement, pan, dolly, still orbit, roll, and product-position controls
+- Fit PCB/selected, aim PCB/selected, target offsets, and save/restore/reset view
+- Camera presets including Top, Front Flat, Back, Left, Right, Isometric, 45 Degree, Bottom, Close-up, and Macro
 - Depth of Field
 - Reflection surface
 - Preview rendering
 - Final still-image rendering and export
 - PCB turntable animation
+- Camera-orbit animation with a stationary PCB
+- Cinematic Flyover camera animation with a stationary PCB and studio
 - 720p and 1080p video rendering
 - Animation duration, FPS, direction, and rotation controls
 
@@ -41,7 +54,15 @@ See a sample PCB Studio turntable animation:
 
 The current tested build is:
 
-**[Download `pcb_studioV9.zip`](Releases/pcb_studioV9.zip)**
+[Download PCB Studio v2.3.2](Releases/pcb_studio-2.3.2.zip).
+
+To rebuild from source, run Blender's extension builder from this repository:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 4.5\blender.exe' --background --factory-startup --command extension build --source-dir pcb_studio --output-dir Releases
+```
+
+The archive excludes Python caches and backup files.
 
 Do **not** extract the ZIP before installing it in Blender.
 
@@ -56,6 +77,123 @@ Do **not** extract the ZIP before installing it in Blender.
 - EEVEE is recommended for faster rendering
 
 No external Python packages are required by the Blender extension.
+
+---
+
+# PCB Studio 2.3.2 — Final Stabilization
+
+Version 2.3.2 completes the still-camera workflow while retaining the established
+Professional Studio, PCB Realism, PCB Turntable, Camera Orbit Animation, and
+Cinematic Flyover systems.
+
+# Professional Studio & PCB Realism
+
+Version 1.0 upgrades the original managed camera/light/background architecture;
+it does not replace the animation hierarchy. **Prepare Scene** now creates a
+dimension-scaled product studio around the complete PCB bounds:
+
+- `PCB_KEY_LIGHT` is the large neutral key softbox.
+- `PCB_FILL_LIGHT` lifts black packages without flattening the image.
+- `PCB_RIM_LIGHT` and `PCB_RIM_LIGHT_2` separate component and PCB edges.
+- `PCB_TOP_LIGHT` is a rectangular strip for long metal and solder highlights.
+- `PCB_BACKGROUND_LIGHT` and `PCB_BACKGROUND_LIGHT_2` illuminate only the
+  backdrop through Blender 4.5 light-linking receiver collections.
+
+Product brightness, background color, background glow, HDRI strength, and floor
+color are independent. A blue or amber background therefore does not require
+blue or amber product lighting.
+
+The original preset identifiers remain supported for saved scenes. Additional
+one-click looks include Clean White Product, Apple-style Soft Studio, Premium
+Black, Dramatic Edge, Metallic Highlight, PCB Macro, Commercial Catalog,
+Cinematic Blue, and Warm Luxury.
+
+## Custom Studio Lights and Reflection Cards
+
+The **Lighting** panel can add managed softboxes, strips, point lights, spots,
+rims, and top lights under `PCB_CUSTOM_LIGHT_*` names. Each light has independent
+enable, power, color or temperature, size, position, rotation, aiming, and spot
+controls. Six starting presets cover common softbox, strip, rim, overhead, and
+accent arrangements. White, black, and silver cards add controlled reflections
+without modifying user-created lights or objects.
+
+## Background, Floor, Pedestal, and Shadows
+
+The **Studio** panel provides eight bounds-aware backdrop shapes, twelve wall
+looks, ten floor types, six floor presets, four pedestal shapes, and accessible
+shadow controls. Studio geometry scales from the complete PCB bounds. Auto
+Center, Fit, Hide, Show, Lock, and Reset operate only on PCB Studio-managed
+visual objects.
+
+## Product Photography Floor System
+
+The **Studio > Floor / Stage** controls now offer Standard, Infinite Studio,
+Shadow Catcher, Custom, and No Floor modes. Simple controls provide floor presets;
+Advanced controls expose geometry, materials, reflections, and grounding.
+The infinite floor uses a connected, smooth curved wall. Floor brightness,
+rotation, offsets, and reflection presets remain stable when lighting changes.
+
+Select a mesh for Custom Floor. Switching away or resetting the studio restores
+its original first material slot and visibility settings. Ground Product moves
+the product vertically; Reset Ground restores its saved position. Auto Ground
+also responds to floor geometry and gap changes.
+
+Native shadow catching requires Cycles. Transparent Background is restored when
+disabled, when leaving Shadow Catcher, or when resetting the studio. Shadow
+strength and softness use the studio lighting; arbitrary shadow tint and separate
+contact-shadow density controls are not exposed. Cast Shadows is a Cycles ray
+visibility control, not a switch for receiving shadows.
+
+## HDRI Lighting Only
+
+Load an HDR or EXR, choose **Lighting Only**, and rotate it to move reflections
+across shields, pins, connectors, and gold contacts. Blender's Light Path node
+separates camera rays from lighting/reflection rays, so the HDRI contributes
+illumination while the camera sees the physical cyclorama or managed world
+color. Manual product lights remain available at the same time.
+
+## PCB Realism
+
+The optional PCB Realism panel provides angle-preserving smoothing and one
+managed `PCB_STUDIO_MICRO_BEVEL` modifier per selected component. The bevel
+width scales from each object's bounds, is clamped against thin geometry, and
+can be removed without applying or destructively changing the mesh.
+
+For a board surface, **Setup PCB UV Mapping** creates a shared top-down UV layer
+with rotation, scale, and offset. **Create PCB Surface** accepts any partial set
+of front/back copper, solder-mask, and silkscreen images. Copper and solder mask
+use different physical shaders, trace relief is a subtle Bump node rather than
+displaced geometry, silkscreen has its own response and optional relief, and
+side faces receive an FR4-like edge material.
+
+## Professional Still Rendering
+
+Use **Render Lighting Preview** for a 25%, 50%, or 100% EEVEE check. Use
+**Render Professional Still** for Cycles Draft (64), Standard (256), High (512),
+or Ultra (1024) adaptive samples with denoising. Choose AUTO, CPU, or GPU under
+**Cycles Render Device**. GPU mode supports Blender-exposed CUDA, OptiX, HIP,
+oneAPI, and Metal backends; AUTO prefers a usable GPU and otherwise uses CPU.
+**Detect / Refresh Devices** lists devices without retaining the detection
+changes. Every professional still saves and restores the scene device, compute
+backend, enabled device flags, and temporary discovery entries in a `finally`
+transaction—even when configuration or rendering fails. PCB Studio never saves
+Blender user preferences.
+
+## Recommended Premium Dark Recipe
+
+| Control | Recommended value |
+|---|---|
+| Backdrop | Studio Gradient, graphite `#020307` to `#07080C` |
+| Background glow | Cool blue, power 220, size 1.45 |
+| HDRI | Studio HDRI, Lighting Only, strength 0.3-0.8 |
+| Key | 5600 K, power 760, size 1.45, azimuth 42 degrees, elevation 48 degrees |
+| Fill | 30% strength |
+| Left / Right rim | 540 / 500 |
+| Top strip | 440, neutral white |
+| Floor | Satin, near-black, roughness 0.34 |
+| Camera | Hero Isometric, 75-85 mm |
+| DOF | Product Sharp |
+| Final | Cycles High |
 
 ---
 
@@ -87,7 +225,7 @@ Open the menu in the upper-right corner and choose:
 
 Select:
 
-`pcb_studioV9.zip`
+`pcb_studio-2.3.2.zip`
 
 Enable **PCB Studio** if Blender asks you to enable it.
 
@@ -215,17 +353,35 @@ After a successful import, the remaining PCB Studio tools become available.
 
 # Prepare the Scene
 
-Click:
+Click **Prepare Scene...** to choose the setup before applying it:
 
-**Prepare Scene**
+- **Center PCB at Origin** moves the complete assembly to the origin. Disable
+  it to preserve the imported placement and orientation.
+- **Set Up Camera** creates or reframes the managed camera. Choose Top, Front
+  Flat, Back, Left, Right, Isometric, 45 Degree, Hero Isometric, Hero Low, or
+  Product Straight, plus a framing margin. Fitting uses the chosen output aspect
+  ratio.
+- **Set Up Lighting and Background** applies the selected complete studio look.
+  Disable it to preserve your existing lights, background, floor, and world.
+- **Render Setup** offers Keep Current Settings, EEVEE Preview, and Cycles Still.
+  Cycles uses the quality selected in the Render panel without changing GPU
+  preferences.
+- **Output Size** offers Keep Current Resolution, 720p, 1080p, square, portrait,
+  4K, and custom dimensions. Explicit size choices also update the still-render
+  output settings.
 
-PCB Studio automatically prepares the rendering environment, including the managed PCB setup, camera, framing, lighting, background, and render configuration.
+The first preparation defaults to a centered PCB, Top camera, studio
+lighting, and a 720p EEVEE setup. Reopening the dialog after preparation defaults
+to preserving existing placement, camera, studio, engine, and resolution;
+missing camera or studio elements can still be created. Cancel closes the dialog
+without changing the scene. Preparation is undoable, and repeated centering
+keeps the assembly at the origin.
 
-Then click:
+Reset an active PCB turntable, camera orbit, or flyover before preparing again.
+Moving the PCB or changing output aspect while keeping the camera can change
+its framing; the dialog shows a reminder for those combinations.
 
-**Render Preview**
-
-to generate a quick preview.
+After confirming the options, use **Render Lighting Preview** to check the result.
 
 If Blender looks temporarily unresponsive while rendering, wait for the render to finish. Rendering time depends on PCB complexity, render resolution, lighting, HDRI size, and hardware.
 
@@ -337,15 +493,24 @@ Supported formats include:
 .exr
 ```
 
-You can download HDRIs from sources such as Poly Haven.
+PCB Studio does not download HDRIs for you. Get free CC0 ones from
+[Poly Haven](https://polyhaven.com/hdris) and save them locally.
 
 For lower-end GPUs, start with **1K or 2K HDRIs**.
 
-Select:
+Open:
 
-`Lighting Mode → HDRI`
+`Sidebar → PCB Studio → 5. Lighting → HDRI Environment`
 
-Load your HDR or EXR file.
+Pick a **Mode**, click **Load HDRI**, choose your `.hdr` or `.exr`, then adjust
+Rotation and Environment Lighting Strength and press **Apply**.
+
+| Mode | Effect |
+|---|---|
+| Off | No HDRI; the managed studio lighting alone |
+| Visible Environment | HDRI lights the scene and is the camera background |
+| Lighting Only | HDRI lights the scene; the camera sees the flat World Color |
+| Lighting + Background | HDRI lights the scene and stays visible but dimmed behind the studio backdrop |
 
 Then adjust:
 
@@ -389,58 +554,94 @@ White Background
 
 # Camera & Composition
 
-PCB Studio provides camera presets so you do not need to manually position the camera for every render.
+**Prepare Scene** starts with a product-oriented **Top** view: the managed
+camera sits on the board's face normal, looks straight at the component side,
+uses a 75 mm lens, and fits the complete PCB with a modest margin. Existing
+Isometric and other presets remain available.
+
+## Board Orientation
+
+Camera presets are authored for a board lying flat with its component side up
+and its front edge toward the viewer. CAD exports do not agree on which way that
+is, so the **Board Orientation** block at the top of the Camera panel decides how
+the board's own frame is found:
+
+- **Automatic** guesses the facing axis from the thinnest dimension of the
+  product bounds and reports what it found. It cannot know which edge is the
+  front, and a board with tall connectors can defeat the guess entirely.
+- **Declare Faces** lets you state it. Pick the world axis the **Top Face**
+  (component side) points along and the axis the **Front Edge** faces -- where a
+  viewer stands to read the silkscreen the right way up. **From View** next to
+  each reads the angle you are currently orbited to and snaps it to the nearest
+  world axis, so you can simply look at a face and claim it.
+
+The two axes must be perpendicular; choosing a front edge that lies along the
+top face is corrected rather than stored. Declaring an orientation only changes
+where the camera goes -- your geometry is never rotated.
 
 ![Camera and composition controls](docs/images/07-camera-composition.png)
 
-Typical presets include:
+## Auto Target and Manual Modes
 
-### Top
+**Auto Target** keeps local camera -Z aimed at `PCB_CAMERA_TARGET`. PCB Studio
+owns one constraint named `PCB Studio Targeting`; switching modes only mutes or
+enables that constraint. It does not delete or change user-authored camera
+constraints. Use **Manual** to unlock free camera rotation, and **Auto Target**
+to re-enable managed aiming.
 
-Straight board overview.
+All panel movement buttons are still-camera operations. They do not insert
+keyframes, including when Blender auto-key is enabled:
 
-Useful for documentation and layout presentation.
+- **Move Camera**: Left, Right, Up, and Down in camera-local axes.
+- **Forward / Back** and **Dolly In / Out**: translate along the viewing axis;
+  dolly does not change focal length.
+- **Pan**: moves the camera and target together, retaining the composition.
+- **Still Orbit**: rotates the camera around the target at constant distance.
+- **Roll**: rotates around the view axis; Reset Roll returns to zero.
 
-### Isometric
+Fine, Normal, and Coarse steps scale from the current PCB dimensions, so the
+buttons remain useful for both small modules and large boards.
 
-Three-quarter product view.
+## Framing, Aiming, and Product Controls
 
-Recommended for general PCB renders.
+- **Fit PCB** frames the full board while preserving viewing direction and lens.
+- **Fit Selected** frames exactly one selected PCB mesh component.
+- **Aim at PCB** and **Aim at Selected** change the target without changing
+  camera position.
+- Live Target X/Y/Z values offset the target from the PCB center; **Reset
+  Target** returns all offsets to zero.
+- Advanced Azimuth, Elevation, Distance, and Roll values update the product view
+  live.
+- **Save View** stores transform, target, lens, and control mode in the scene;
+  **Restore View** recalls them. **Reset Camera** restores Top, 75 mm,
+  Auto Target, and fits the PCB.
 
-### 45 Degree
+Still-camera controls are disabled while a **Camera Orbit Animation** or
+**Cinematic Flyover** rig is active. Use **Reset Animation** before adjusting a
+still composition.
 
-Lower angle that shows more PCB thickness and component height.
+## Camera Presets
 
-### Bottom
+Every preset below is aimed in the board's own frame, so it shows the face it
+names whichever way the board was exported. See **Board Orientation** above.
 
-Shows the underside of the PCB when underside geometry is present.
+| Preset | Purpose |
+|---|---|
+| Top | Default 75 mm view straight down at the component side |
+| Front Flat | 75 mm level elevation of the board's front edge |
+| Back | 75 mm elevation of the edge opposite the front |
+| Left / Right | 75 mm elevations of the side edges |
+| Isometric | Three-quarter product view |
+| 45 Degree | Lower angle with more edge visibility |
+| Bottom | Straight up at the solder side |
+| Connector Closeup | Long-lens framing of one selected PCB component |
+| Macro | Tight framing of one selected PCB component |
+| Hero Isometric | 80 mm commercial three-quarter view |
+| Hero Low | 85 mm low product angle |
+| Product Straight | 75 mm clean straight-on composition |
 
-### Connector Closeup
-
-1. Switch Blender to Object Mode.
-2. Select one PCB component.
-3. Choose **Connector Closeup**.
-4. Apply the camera preset.
-
-PCB Studio uses the selected object as the camera target.
-
-### Macro
-
-Select one PCB object and choose **Macro** for a tighter close-up.
-
-Macro mode can be combined with Depth of Field.
-
----
-
-# Zoom to Fit PCB
-
-After changing camera direction or focal length, use:
-
-**Zoom to Fit PCB**
-
-PCB Studio adjusts camera distance so the PCB fits inside the frame while preserving the current camera direction.
-
----
+Connector Closeup and Macro require exactly one selected PCB mesh in Object
+Mode.
 
 # Camera Focal Length
 
@@ -450,11 +651,12 @@ Typical ranges:
 
 ```text
 24–35 mm   Wide perspective
-50–70 mm   General product photography
+50–75 mm   General product photography
 85–120 mm  Close-up / macro style
 ```
 
-After changing focal length, use **Zoom to Fit PCB** if the board becomes cropped.
+After changing focal length, click **Apply Camera Settings** to update the lens
+and fit the PCB with the current Fit Margin.
 
 ---
 
@@ -523,9 +725,24 @@ PCB Studio can render and save the image automatically.
 
 ---
 
-# Turntable Animation
+# PCB Turntable, Camera Orbit Animation, and Cinematic Flyover
 
-PCB Studio can create a product-style rotating PCB animation.
+PCB Studio provides three product-animation styles:
+
+- **PCB Turntable** keeps the camera stationary while the PCB rotates.
+- **Camera Orbit Animation** creates a temporary keyed rig and keeps the PCB
+  stationary while the camera circles it.
+- **Cinematic Flyover** keeps the PCB stationary while the camera physically
+  travels across a dimension-scaled product-shot path and tracks the PCB centre.
+
+Choose the required style from **Animation Type** before clicking
+**Setup Animation**.
+
+This is distinct from the **Still Orbit (No Keyframes)** buttons in Camera &
+Composition. Still Orbit makes one immediate composition adjustment; Camera
+Orbit Animation creates timeline keyframes. While an orbit/flyover rig exists,
+still-camera controls remain locked until **Reset Animation** restores the saved
+camera and target state.
 
 The intended behavior is:
 
@@ -538,6 +755,12 @@ PCB rotates
 
 This creates a commercial product-turntable effect.
 
+In Camera Orbit mode, PCB Studio creates a temporary pivot at the calculated
+PCB centre and an offset mount at the camera's current position. Rotating the
+pivot physically carries the mounted camera around a circular path while the
+camera continues to point at the PCB. The PCB, lights, background, HDRI, and
+reflection surfaces remain stationary.
+
 ![Turntable controls](docs/images/08-turntable.png)
 
 Recommended full-board camera presets:
@@ -545,9 +768,31 @@ Recommended full-board camera presets:
 - Isometric
 - 45 Degree
 
+## Cinematic Flyover
+
+Choose **Cinematic Flyover** to move only the managed render camera. The PCB,
+lights, background, HDRI/world, and reflection plane remain stationary.
+
+**Flyover Style** offers Side Sweep, Front-to-Back, and Diagonal Reveal.
+**Flyover Height** offers Low, Medium, and High elevations. All offsets and
+heights are derived from the current PCB world-space bounding box, so the same
+presets scale to different board sizes and positions. Diagonal Reveal, Medium
+height, 6 seconds, 30 FPS, and Ease In/Out are recommended for a product shot.
+
+The camera uses the existing `PCB_CAMERA_TARGET` at the calculated PCB centre.
+**Reset Animation** removes the temporary `PCB_CAMERA_FLYOVER_ROOT`, removes
+only a tracking constraint created by the flyover (if any), and restores the
+camera matrix, parent, parent inverse, lens, target, and prior timeline range.
+Setting up another animation mode first performs the same managed cleanup.
+
+Flyover testing checklist: verify changing camera XYZ at start/25%/50%/75%/end,
+a stationary `PCB_MODEL_ROOT` and studio, centred tracking, distinct styles and
+heights, correct duration × FPS, eased motion, repeated setup, mode switching,
+exact reset, a midpoint test frame, and a short Draft render.
+
 ---
 
-# Turntable Settings
+# Animation Settings
 
 ## Direction
 
@@ -618,15 +863,15 @@ This provides a good balance between quality, file size, and render time.
 
 ---
 
-# Preview Turntable
+# Preview Animation
 
 Click:
 
-**Setup Turntable**
+**Setup Animation**
 
 then:
 
-**Preview Turntable**
+**Preview Animation**
 
 This lets you inspect the rotation before rendering every frame.
 
@@ -660,13 +905,13 @@ If the test frame looks correct, continue to the full animation.
 
 ---
 
-# Render Turntable Video
+# Render Animation
 
 Select the required video quality, output directory, and filename.
 
 Then click:
 
-**Render Turntable Video**
+**Render Animation**
 
 For slower computers, start with:
 
@@ -725,9 +970,11 @@ Select a valid PCB mesh object before assigning the material.
 
 ## Camera view looks wrong
 
-Try another camera preset and use **Zoom to Fit PCB**.
+Click **Reset Camera** for the 75 mm Top baseline, then use **Fit PCB**.
+For a free viewport-derived angle, switch to **Manual** before adjusting camera
+rotation. Use **Auto Target** when the camera should remain aimed at its target.
 
-You can also manually adjust Blender's camera after PCB Studio creates it.
+If the panel says still controls are locked, click **Reset Animation** first.
 
 ## HDRI is slow
 
@@ -758,11 +1005,24 @@ Current limitations may include:
 - Some imported MTL materials may need manual adjustment.
 - KiCad STEP workflows currently require conversion to OBJ.
 - Automatic component classification is not included.
-- Material assignment is mainly manual.
+- Material assignment and identifying the board object for PCB layer textures remain manual.
+- PCB layer masks are expected to share the same image canvas and alignment.
+- Top-down UV projection assumes the board surface is aligned to local XY.
+- Automatic component targets assume the prepared PCB convention (+Z is top);
+  unusual component orientations may be better handled with Selected Faces.
+- Current View projection needs an open 3D Viewport. Selected Faces and all six
+  directional projections are independent of editor context.
+- Backend availability is determined by the running Blender build, operating
+  system, driver, and hardware; unavailable GPU requests can fall back to CPU.
+- Background-light isolation uses Blender 4.5 light linking; colored Cycles
+  bounce from a lit physical backdrop can still contribute subtly to the scene.
+- Vignette is exposed as a reserved finishing control but is not injected into
+  a custom compositor graph; existing user compositor nodes are always preserved.
 - Very complex PCB models can take longer to import and render.
 - High-resolution HDRIs use more GPU memory.
 - 1080p animation can take significant time on older GPUs.
-- Some camera compositions may still benefit from manual adjustment.
+- Extreme closeups and unusually shaped boards may still benefit from Manual
+  mode and a custom Fit Margin.
 
 Always keep a copy of your original PCB export.
 
@@ -773,7 +1033,7 @@ Always keep a copy of your original PCB export.
 ```text
 Blender: 4.5.11 LTS
 Operating System: Windows
-Renderer: EEVEE
+Renderer: EEVEE Next and Cycles
 Primary Input: Altium Designer OBJ + MTL
 ```
 
@@ -803,3 +1063,7 @@ PCB Studio is an experimental project under active development.
 The goal is to make attractive PCB product renders and animations accessible to engineers and PCB designers without requiring deep Blender experience.
 
 Feedback, testing, bug reports, and suggestions are welcome.
+
+Product orientation controls are documented in
+[Product Presentation](pcb_studio/PRODUCT_PRESENTATION.md), including animation
+safety, object classification, and tested limitations.

@@ -1,18 +1,20 @@
-"""Camera creation, framing, and look-at utilities."""
+"""Camera creation, framing, and managed-target utilities."""
 
 from __future__ import annotations
 
-from math import atan, tan
+from math import atan, radians, tan
 
 import bpy
 from mathutils import Vector
 
 from ..constants import (
     CAMERA_NAME,
+    CAMERA_TARGET_CONSTRAINT_NAME,
     CAMERA_TARGET_NAME,
+    PROP_SCENE_ATTR,
     RENDER_SETUP_COLLECTION,
 )
-from .geometry import BoundingBox
+from .geometry import BoundingBox, board_direction
 
 
 def get_or_create_render_setup_collection() -> bpy.types.Collection:
@@ -24,11 +26,69 @@ def get_or_create_render_setup_collection() -> bpy.types.Collection:
     return coll
 
 
-def _remove_track_constraints(camera: bpy.types.Object) -> None:
-    """Remove all Damped Track constraints from the camera."""
+def get_or_create_camera_target() -> bpy.types.Object:
+    """Return PCB Studio's camera target without affecting other empties."""
+    target = bpy.data.objects.get(CAMERA_TARGET_NAME)
+    if target is None:
+        target = bpy.data.objects.new(CAMERA_TARGET_NAME, None)
+        target.empty_display_type = "PLAIN_AXES"
+        get_or_create_render_setup_collection().objects.link(target)
+    return target
+
+
+def get_managed_target_constraint(
+    camera: bpy.types.Object,
+) -> bpy.types.Constraint | None:
+    """Return only the targeting constraint owned by PCB Studio.
+
+    Older PCB Studio scenes used Blender's default constraint name. A legacy
+    constraint is adopted only when it already targets PCB_CAMERA_TARGET;
+    unrelated user constraints are never removed or modified.
+    """
     for constraint in camera.constraints:
-        if constraint.type == "DAMPED_TRACK":
-            camera.constraints.remove(constraint)
+        if (
+            constraint.type == "DAMPED_TRACK"
+            and (
+                constraint.name == CAMERA_TARGET_CONSTRAINT_NAME
+                or constraint.name.startswith(f"{CAMERA_TARGET_CONSTRAINT_NAME}.")
+            )
+        ):
+            return constraint
+    target = bpy.data.objects.get(CAMERA_TARGET_NAME)
+    if target is not None:
+        for constraint in camera.constraints:
+            if (
+                constraint.type == "DAMPED_TRACK"
+                and constraint.target == target
+                and constraint.name.startswith("Damped Track")
+            ):
+                constraint.name = CAMERA_TARGET_CONSTRAINT_NAME
+                return constraint
+    return None
+
+
+def ensure_managed_target_constraint(
+    camera: bpy.types.Object,
+    target: bpy.types.Object | None = None,
+    *,
+    enabled: bool = True,
+) -> bpy.types.Constraint:
+    """Create/update PCB Studio's one managed camera-target constraint."""
+    target = target or get_or_create_camera_target()
+    track = get_managed_target_constraint(camera)
+    if track is None:
+        track = camera.constraints.new(type="DAMPED_TRACK")
+        track.name = CAMERA_TARGET_CONSTRAINT_NAME
+    track.target = target
+    track.track_axis = "TRACK_NEGATIVE_Z"
+    track.mute = not enabled
+    track.influence = 1.0
+    return track
+
+
+def set_managed_targeting(camera: bpy.types.Object, enabled: bool) -> None:
+    """Enable or mute only PCB Studio's targeting constraint."""
+    ensure_managed_target_constraint(camera, enabled=enabled)
 
 
 def _compute_camera_distance(
@@ -57,27 +117,12 @@ def _compute_camera_distance(
 
 
 def setup_camera(bounds: BoundingBox) -> str:
-    """Create or update the PCB render camera and target.
-
-    Positions the camera in a three-quarter product-view direction,
-    frames the complete PCB with a margin, and aims at a target
-    Empty at the PCB center using a Damped Track constraint.
-
-    Args:
-        bounds: The combined PCB bounding box.
-
-    Returns:
-        A status message describing the result.
-    """
+    """Create/update the managed camera in the default Top view of the board face."""
     scene = bpy.context.scene
     setup_coll = get_or_create_render_setup_collection()
 
     # --- Camera target ---
-    target = bpy.data.objects.get(CAMERA_TARGET_NAME)
-    if target is None:
-        target = bpy.data.objects.new(CAMERA_TARGET_NAME, None)
-        target.empty_display_type = "PLAIN_AXES"
-        setup_coll.objects.link(target)
+    target = get_or_create_camera_target()
     target.location = bounds.center
 
     # --- Camera ---
@@ -85,33 +130,38 @@ def setup_camera(bounds: BoundingBox) -> str:
     if camera_obj is None:
         cam_data = bpy.data.cameras.new(CAMERA_NAME)
         cam_data.type = "PERSP"
-        cam_data.lens = 50.0  # mm
         camera_obj = bpy.data.objects.new(CAMERA_NAME, cam_data)
         setup_coll.objects.link(camera_obj)
 
     cam_data = camera_obj.data
-    cam_data.lens = 50.0
-
-    # Sensor dimensions (Blender defaults).
-    sensor_width = cam_data.sensor_width
-    sensor_height = cam_data.sensor_height
-
-    # Three-quarter view direction.
-    direction = Vector((1.0, -1.0, 1.0)).normalized()
-
-    # Compute distance and position.
+    cam_data.lens = 75.0
     distance = _compute_camera_distance(
-        bounds.dimensions, sensor_width, sensor_height, cam_data.lens,
+        bounds.dimensions,
+        cam_data.sensor_width,
+        cam_data.sensor_height,
+        cam_data.lens,
+        1.10,
     )
-    camera_obj.location = bounds.center + direction * distance
-
-    # --- Damped Track constraint ---
-    _remove_track_constraints(camera_obj)
-    track = camera_obj.constraints.new(type="DAMPED_TRACK")
-    track.target = target
-    track.track_axis = "TRACK_NEGATIVE_Z"
-
-    # Set as active camera.
+    # The board does not always lie flat in XY, so start on its face normal
+    # rather than hardcoding "straight above".
+    camera_obj.location = bounds.center + board_direction(bounds, Vector((0.0, 0.0, 1.0))) * distance
+    ensure_managed_target_constraint(camera_obj, target, enabled=True)
     scene.camera = camera_obj
-
-    return f"Camera framed at distance {distance:.1f} units."
+    bpy.context.view_layer.update()
+    props = getattr(scene, PROP_SCENE_ATTR, None)
+    if props is not None:
+        scene["pcbstudio_camera_batch_update"] = True
+        try:
+            props.camera_preset = "TOP"
+            props.camera_focal_length = 75.0
+            props.camera_control_mode = "AUTO_TARGET"
+            props.camera_azimuth = 0.0
+            props.camera_elevation = radians(90.0)
+            props.camera_distance = max(0.0001, distance)
+            props.camera_roll = 0.0
+            props.camera_target_offset_x = 0.0
+            props.camera_target_offset_y = 0.0
+            props.camera_target_offset_z = 0.0
+        finally:
+            scene["pcbstudio_camera_batch_update"] = False
+    return f"Top camera framed at distance {distance:.1f} units."

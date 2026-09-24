@@ -11,6 +11,7 @@ from ..constants import (
     PROP_SCENE_ATTR,
 )
 from ..utils.environment import apply_background_preset
+from ..utils.studio import update_professional_studio
 
 
 class PCBSTUDIO_OT_apply_background(bpy.types.Operator):
@@ -35,7 +36,10 @@ class PCBSTUDIO_OT_apply_background(bpy.types.Operator):
             self.report({"ERROR"}, "Extension state not available.")
             return {"CANCELLED"}
 
-        result = apply_background_preset(props.background_preset)
+        material_result = apply_background_preset(props.background_preset)
+        studio_result = update_professional_studio(context.scene, props)
+        failed = studio_result.startswith(("Cannot", "No ", "Unknown"))
+        result = studio_result if failed else f"{material_result}. {studio_result}"
         props.environment_status = result
-        self.report({"INFO"}, result)
-        return {"FINISHED"}
+        self.report({"ERROR"} if failed else {"INFO"}, result)
+        return {"CANCELLED"} if failed else {"FINISHED"}

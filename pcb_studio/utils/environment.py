@@ -16,6 +16,7 @@ from ..constants import (
     FILL_LIGHT_NAME,
     KEY_LIGHT_NAME,
     PCB_STUDIO_WORLD_NAME,
+    PROP_SCENE_ATTR,
     RENDER_SETUP_COLLECTION,
     RIM_LIGHT_2_NAME,
     RIM_LIGHT_NAME,
@@ -206,6 +207,18 @@ def apply_lighting_preset(
     Returns:
         A status message.
     """
+    props = getattr(bpy.context.scene, PROP_SCENE_ATTR, None)
+    if props is not None and hasattr(props, "master_product_brightness"):
+        from .studio import apply_professional_preset
+
+        bpy.context.scene["pcbstudio_batch_update"] = True
+        try:
+            props.lighting_intensity = intensity
+            props.shadow_softness = shadow_softness
+        finally:
+            bpy.context.scene["pcbstudio_batch_update"] = False
+        return apply_professional_preset(bpy.context.scene, props, preset_key)
+
     preset = PRESETS.get(preset_key)
     if preset is None:
         return f"Unknown preset: {preset_key}"
@@ -257,10 +270,9 @@ def set_light_visibility(visible: bool) -> None:
     Args:
         visible: ``True`` to show, ``False`` to hide from renders.
     """
-    for name in _ALL_MANAGED_LIGHT_NAMES:
-        obj = bpy.data.objects.get(name)
-        if obj is not None:
-            obj.hide_render = not visible
+    from .studio import set_product_light_visibility
+
+    set_product_light_visibility(visible)
 
 
 def apply_background_preset(preset_key: str) -> str:
@@ -272,6 +284,17 @@ def apply_background_preset(preset_key: str) -> str:
     Returns:
         A status message.
     """
+    props = getattr(bpy.context.scene, PROP_SCENE_ATTR, None)
+    if props is not None and hasattr(props, "background_color"):
+        from .studio import update_background_material
+
+        bpy.context.scene["pcbstudio_batch_update"] = True
+        try:
+            props.background_preset = preset_key
+        finally:
+            bpy.context.scene["pcbstudio_batch_update"] = False
+        return update_background_material(props)
+
     mat = bpy.data.materials.get(BACKGROUND_MATERIAL_NAME)
     if mat is None:
         mat = bpy.data.materials.new(BACKGROUND_MATERIAL_NAME)
@@ -386,6 +409,27 @@ def setup_hdri_world(
     Returns:
         A status message.
     """
+    props = getattr(bpy.context.scene, PROP_SCENE_ATTR, None)
+    if props is not None and hasattr(props, "hdri_mode"):
+        from .studio import update_hdri_world
+
+        path = Path(filepath)
+        if not path.is_file():
+            return f"HDRI file not found: {filepath}"
+        if path.suffix.lower() not in {".hdr", ".exr"}:
+            return f"Unsupported HDRI format: {path.suffix.lower()}"
+        bpy.context.scene["pcbstudio_batch_update"] = True
+        try:
+            props.hdri_filepath = str(path)
+            props.hdri_rotation = radians(rotation_degrees)
+            props.hdri_brightness = brightness
+            if props.hdri_mode == "OFF":
+                props.hdri_mode = "VISIBLE_ENVIRONMENT"
+        finally:
+            bpy.context.scene["pcbstudio_batch_update"] = False
+        result = update_hdri_world(props)
+        return f"HDRI loaded: {path.name}. {result}"
+
     path = Path(filepath)
     if not path.is_file():
         return f"HDRI file not found: {filepath}"
@@ -461,6 +505,19 @@ def remove_hdri_from_world() -> str:
     Returns:
         A status message.
     """
+    props = getattr(bpy.context.scene, PROP_SCENE_ATTR, None)
+    if props is not None and hasattr(props, "hdri_mode"):
+        from .studio import update_hdri_world
+
+        bpy.context.scene["pcbstudio_batch_update"] = True
+        try:
+            props.hdri_filepath = ""
+            props.hdri_mode = "OFF"
+        finally:
+            bpy.context.scene["pcbstudio_batch_update"] = False
+        update_hdri_world(props)
+        return "HDRI removed; manual studio lighting remains active."
+
     world = bpy.data.worlds.get(PCB_STUDIO_WORLD_NAME)
     if world is None:
         return "No PCB Studio world to remove."
@@ -478,3 +535,10 @@ def remove_hdri_from_world() -> str:
         bg.inputs["Strength"].default_value = 1.0
 
     return "HDRI removed."
+
+
+def refresh_studio_values(scene: bpy.types.Scene, props) -> str:
+    """Compatibility entry point used by lightweight property callbacks."""
+    from .studio import refresh_studio_values as refresh
+
+    return refresh(scene, props)

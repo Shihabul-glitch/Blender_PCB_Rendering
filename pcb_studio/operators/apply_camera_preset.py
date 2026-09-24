@@ -37,12 +37,10 @@ class PCBSTUDIO_OT_apply_camera_preset(bpy.types.Operator):
 
         result = apply_camera_preset(
             props.camera_preset,
-            focal_length=props.camera_focal_length,
             context=context,
         )
 
         props.camera_status = result
-        self.report(
-            {"INFO"} if "applied" in result else {"ERROR"}, result,
-        )
-        return {"FINISHED"}
+        success = result.startswith("Camera preset applied:")
+        self.report({"INFO"} if success else {"ERROR"}, result)
+        return {"FINISHED"} if success else {"CANCELLED"}

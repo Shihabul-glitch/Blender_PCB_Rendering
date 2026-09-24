@@ -8,15 +8,16 @@ import bpy
 
 from ..constants import (
     MATERIAL_NAME_PREFIX,
+    OPERATOR_ID_CREATE_MATERIAL,
     PROP_SCENE_ATTR,
 )
+from ..utils import material_compat as compat
+from ..utils.material_nodes import apply_surface_detail
 from ..utils.materials import (
     PRESET_DATA,
+    apply_props_to_material,
     get_or_create_pcb_material,
-    update_material_from_values,
 )
-
-OPERATOR_ID_CREATE_MATERIAL = "pcbstudio.create_or_update_material"
 
 
 class PCBSTUDIO_OT_create_or_update_material(bpy.types.Operator):
@@ -78,32 +79,26 @@ class PCBSTUDIO_OT_create_or_update_material(bpy.types.Operator):
 
         # --- Create or get the material ---
         mat = get_or_create_pcb_material(mat_name)
+        compat.mark_managed(mat, preset_key)
 
-        # --- Update values from UI properties ---
-        base_color = (
-            props.material_base_color[0],
-            props.material_base_color[1],
-            props.material_base_color[2],
-            props.material_base_color[3],
-        )
-        update_material_from_values(
-            mat,
-            base_color=base_color,
-            metallic=props.material_metallic,
-            roughness=props.material_roughness,
-            coat_weight=props.material_coat_weight,
-        )
+        # --- Write the UI values (socket defaults only) ---
+        apply_props_to_material(mat, props)
+
+        # --- Optional nodes: only inside a material PCB Studio may rebuild ---
+        detail = ""
+        if compat.is_managed(mat) or compat.is_simple_principled(mat):
+            detail = apply_surface_detail(mat, props)
 
         # --- Update UI state ---
         props.current_material_name = mat_name
-        props.material_status = (
-            f"Material '{mat_name}' created/updated."
-        )
+        status = f"Material '{mat_name}' ready"
+        if detail:
+            status = f"{status} ({detail})"
+        props.material_status = f"{status}."
 
         self.report(
             {"INFO"},
-            f"Material '{mat_name}' ready. "
-            "Select objects and click 'Assign to Selected Objects'.",
+            f"{status}. Select objects and click 'Assign to Selected Objects'.",
         )
 
         return {"FINISHED"}

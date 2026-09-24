@@ -16,7 +16,7 @@ from ..constants import (
     OPERATOR_ID_RENDER_TURNTABLE,
     PROP_SCENE_ATTR,
 )
-from ..utils.animation import get_turntable_frame_count
+from ..utils.animation import get_turntable_frame_count, has_managed_animation
 from ..utils.video_output import (
     apply_resolution_preset,
     configure_mp4_output,
@@ -26,11 +26,11 @@ from ..utils.video_output import (
 
 
 class PCBSTUDIO_OT_preview_turntable(bpy.types.Operator):
-    """Preview the turntable animation in the viewport."""
+    """Preview the selected animation in the viewport."""
 
     bl_idname: str = OPERATOR_ID_PREVIEW_TURNTABLE
-    bl_label: str = "Preview Turntable"
-    bl_description: str = "Start viewport animation playback to preview the turntable"
+    bl_label: str = "Preview Animation"
+    bl_description: str = "Start viewport playback for the configured animation"
     bl_options: set[str] = {"REGISTER"}
 
     def execute(self, context: bpy.types.Context | None) -> set[str]:
@@ -57,6 +57,11 @@ class PCBSTUDIO_OT_preview_turntable(bpy.types.Operator):
             self.report({"ERROR"}, "Camera not found. Run Prepare Scene first.")
             return {"CANCELLED"}
 
+        if not has_managed_animation(props.animation_type):
+            self.report({"ERROR"}, "Click Setup Animation before previewing.")
+            props.turntable_status = "Animation has not been set up."
+            return {"CANCELLED"}
+
         context.scene.camera = camera
         context.scene.frame_set(1)
 
@@ -67,13 +72,13 @@ class PCBSTUDIO_OT_preview_turntable(bpy.types.Operator):
             # Playback cannot be started from some contexts.
             self.report(
                 {"INFO"},
-                "Turntable configured. Press Spacebar to preview animation.",
+                "Animation configured. Press Spacebar to preview it.",
             )
             props.turntable_status = "Ready for preview."
             return {"FINISHED"}
 
         props.turntable_status = "Preview playback started."
-        self.report({"INFO"}, "Turntable preview started.")
+        self.report({"INFO"}, "Animation preview started.")
         return {"FINISHED"}
 
 
@@ -145,11 +150,11 @@ class PCBSTUDIO_OT_render_test_frame(bpy.types.Operator):
 
 
 class PCBSTUDIO_OT_render_turntable(bpy.types.Operator):
-    """Render the complete turntable animation to video or PNG sequence."""
+    """Render the complete PCB or camera animation to video or PNG sequence."""
 
     bl_idname: str = OPERATOR_ID_RENDER_TURNTABLE
-    bl_label: str = "Render Turntable Video"
-    bl_description: str = "Render the turntable animation to MP4 or PNG sequence"
+    bl_label: str = "Render Animation"
+    bl_description: str = "Render the configured animation to MP4 or PNG sequence"
     bl_options: set[str] = {"REGISTER"}
 
     def execute(self, context: bpy.types.Context | None) -> set[str]:
@@ -181,6 +186,11 @@ class PCBSTUDIO_OT_render_turntable(bpy.types.Operator):
             return {"CANCELLED"}
 
         context.scene.camera = camera
+
+        if not has_managed_animation(props.animation_type):
+            self.report({"ERROR"}, "Click Setup Animation before rendering.")
+            props.turntable_status = "Animation has not been set up."
+            return {"CANCELLED"}
 
         # Validate output path.
         output_fmt = props.animation_output_format
@@ -226,7 +236,8 @@ class PCBSTUDIO_OT_render_turntable(bpy.types.Operator):
 
         # Summary.
         summary = (
-            f"PCB Studio Turntable Render\n"
+            f"PCB Studio Animation Render\n"
+            f"Type: {props.animation_type}\n"
             f"Resolution: {scene.render.resolution_x}×{scene.render.resolution_y}\n"
             f"FPS: {fps}\n"
             f"Duration: {props.turntable_duration}s\n"
@@ -236,7 +247,7 @@ class PCBSTUDIO_OT_render_turntable(bpy.types.Operator):
         print(f"{EXTENSION_NAME} v{EXTENSION_VERSION}:\n{summary}")
 
         props.turntable_status = "Rendering..."
-        self.report({"INFO"}, "Turntable animation rendering started.")
+        self.report({"INFO"}, "Animation rendering started.")
 
         # Render animation.
         try:
@@ -253,9 +264,9 @@ class PCBSTUDIO_OT_render_turntable(bpy.types.Operator):
 
         props.turntable_status = f"Completed: {total_frames} frames"
         props.last_animation_output = full_path
-        self.report({"INFO"}, f"Turntable animation saved to {full_path}")
+        self.report({"INFO"}, f"Animation saved to {full_path}")
         print(
             f"{EXTENSION_NAME} v{EXTENSION_VERSION}: "
-            f"Turntable animation saved to {full_path}",
+            f"Animation saved to {full_path}",
         )
         return {"FINISHED"}

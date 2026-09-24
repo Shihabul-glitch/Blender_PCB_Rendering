@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import traceback
+from math import degrees
 
 import bpy
 
@@ -24,6 +25,9 @@ class PCBSTUDIO_OT_load_hdri(bpy.types.Operator):
     bl_options: set[str] = {"REGISTER", "UNDO"}
 
     filepath: bpy.props.StringProperty(subtype="FILE_PATH")  # type: ignore[valid-type]
+    # Only these two are accepted downstream, so don't offer files that will be
+    # rejected with "Unsupported HDRI format" after the user has picked them.
+    filter_glob: bpy.props.StringProperty(default="*.hdr;*.exr", options={"HIDDEN"})  # type: ignore[valid-type]
 
     def execute(self, context: bpy.types.Context | None) -> set[str]:
         try:
@@ -45,15 +49,12 @@ class PCBSTUDIO_OT_load_hdri(bpy.types.Operator):
 
         result = setup_hdri_world(
             self.filepath,
-            rotation_degrees=props.hdri_rotation,
+            rotation_degrees=degrees(props.hdri_rotation),
             brightness=props.hdri_brightness,
         )
 
         if "HDRI loaded" in result:
             props.hdri_filepath = self.filepath
-            # Hide studio lights when HDRI is active.
-            from ..utils.environment import set_light_visibility
-            set_light_visibility(False)
 
         props.environment_status = result
         self.report(
@@ -94,7 +95,7 @@ class PCBSTUDIO_OT_apply_hdri(bpy.types.Operator):
 
         result = setup_hdri_world(
             props.hdri_filepath,
-            rotation_degrees=props.hdri_rotation,
+            rotation_degrees=degrees(props.hdri_rotation),
             brightness=props.hdri_brightness,
         )
 

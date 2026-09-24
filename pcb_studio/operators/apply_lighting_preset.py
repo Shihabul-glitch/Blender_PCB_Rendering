@@ -42,5 +42,6 @@ class PCBSTUDIO_OT_apply_lighting_preset(bpy.types.Operator):
         )
 
         props.environment_status = result
-        self.report({"INFO"}, result)
-        return {"FINISHED"}
+        failed = result.startswith(("Cannot", "No ", "Unknown"))
+        self.report({"ERROR"} if failed else {"INFO"}, result)
+        return {"CANCELLED"} if failed else {"FINISHED"}
