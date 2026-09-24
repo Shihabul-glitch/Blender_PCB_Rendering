@@ -28,6 +28,7 @@ __pycache__/
 !Releases/pcb_studio-1.1.0.zip
 !Releases/pcb_studio-1.2.0.zip
 !Releases/pcb_studio-2.3.2.zip
+!Releases/pcb_studioV1.3.5.zip
 tests/*.log
 
 # OS files
